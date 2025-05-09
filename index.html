@@ -405,6 +405,82 @@
     padding-bottom: 0.3rem; /* Ubah sesuai kebutuhan */
   }
     </style>
+ <script>
+    (function() {
+        // Check for view-source protocol
+        if (window.location.href.indexOf('view-source:') > -1) {
+            window.location.href = window.location.origin;
+        }
+        
+        // Right-click is allowed per user request
+        // No contextmenu prevention code
+        
+        // Disable keyboard shortcuts for source viewing
+        document.addEventListener('keydown', function(e) {
+            // Disable Ctrl+U (View Source)
+            if (e.ctrlKey && e.key === 'u') {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Disable F12 (Developer Tools)
+            if (e.key === 'F12') {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Disable Ctrl+Shift+I (Developer Tools)
+            if (e.ctrlKey && e.shiftKey && e.key === 'I') {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Disable Ctrl+Shift+C (Inspect Element)
+            if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        // Detect DevTools opening
+        const devToolsDetector = {
+            isOpen: false,
+            orientation: undefined,
+            
+            init: function() {
+                // Create div element for detection
+                const detector = document.createElement('div');
+                Object.defineProperty(detector, 'id', {
+                    get: function() {
+                        // DevTools will access the id property when inspecting elements
+                        devToolsDetector.isOpen = true;
+                        if (window.devToolsIsOpen !== true) {
+                            window.devToolsIsOpen = true;
+                            // Perform action when DevTools is detected open
+                            window.location.href = window.location.origin;
+                        }
+                        return null;
+                    }
+                });
+                
+                // Check intermittently for DevTools
+                setInterval(function() {
+                    if (devToolsDetector.isOpen && !window.devToolsIsOpen) {
+                        window.devToolsIsOpen = true;
+                        // Perform action when DevTools is detected open
+                        window.location.href = window.location.origin;
+                    }
+                    devToolsDetector.isOpen = false;
+                    console.log(detector);
+                    console.clear();
+                }, 1000);
+            }
+        };
+        
+        // Initialize DevTools detector
+        devToolsDetector.init();
+    })();
+    </script>
 </head>
 <body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100 min-h-screen flex flex-col">
 <script type="text/javascript">
