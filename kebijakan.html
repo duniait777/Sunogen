@@ -1,0 +1,1860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Playlist Player</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary-color: #5D5CDE;
+      --bg-color: #ffffff;
+      --text-color: #333333;
+      --secondary-bg: #f5f5f5;
+      --player-bg: #022a84;
+      --player-header-bg: #3c3c3c;
+      --track-list-bg: #1e1e1e;
+      --track-border: #333;
+      --artist-color: #aaa;
+      --time-color: #ccc;
+      --heart-color: #ff4d4d;
+      --controls-bg: #f72f04 ;
+      --button-bg: #444;
+      --button-hover: #666;
+      --slider-color: #5D5CDE;
+      --time-bg: #444;
+      --time-color: #eee;
+      --sidebar-bg: #252525;
+      --sidebar-text: #ffffff;
+      --sidebar-header: #3c3c3c;
+      --sidebar-border: #444;
+      --toggle-bg: #5D5CDE;
+      --sidebar-width: 300px;
+      --sidebar-width-mobile: 260px;
+      --player-collapsed-height: 60px;
+    }
+
+    html.dark {
+      --bg-color: #181818;
+      --text-color: #ffffff;
+      --secondary-bg: #2a2a2a;
+    }
+
+    /* Theme presets */
+    html.theme-purple {
+      --primary-color: #5D5CDE;
+      --toggle-bg: #5D5CDE;
+      --slider-color: #5D5CDE;
+    }
+
+    html.theme-red {
+      --primary-color: #DB4437;
+      --toggle-bg: #DB4437;
+      --slider-color: #DB4437;
+    }
+
+    html.theme-green {
+      --primary-color: #0F9D58;
+      --toggle-bg: #0F9D58;
+      --slider-color: #0F9D58;
+    }
+
+    html.theme-blue {
+      --primary-color: #4285F4;
+      --toggle-bg: #4285F4;
+      --slider-color: #4285F4;
+    }
+
+    html.theme-orange {
+      --primary-color: #F4B400;
+      --toggle-bg: #F4B400;
+      --slider-color: #F4B400;
+    }
+
+    html.theme-pink {
+      --primary-color: #E91E63;
+      --toggle-bg: #E91E63;
+      --slider-color: #E91E63;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg-color);
+      font-family: 'Segoe UI', sans-serif;
+      color: var(--text-color);
+      transition: background 0.3s, color 0.3s;
+      overflow: hidden;
+    }
+
+    .app-container {
+      display: flex;
+      height: 100vh;
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      background: var(--sidebar-bg);
+      width: var(--sidebar-width);
+      height: 100%;
+      color: var(--sidebar-text);
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      transform: translateX(0);
+      transition: transform 0.3s ease;
+    }
+
+    .sidebar.closed {
+      transform: translateX(-100%);
+    }
+
+    .settings-sidebar {
+      background: var(--sidebar-bg);
+      width: var(--sidebar-width);
+      height: 100%;
+      color: var(--sidebar-text);
+      position: absolute;
+      top: 0;
+      right: 0;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      transform: translateX(0);
+      transition: transform 0.3s ease;
+    }
+
+    .settings-sidebar.closed {
+      transform: translateX(100%);
+    }
+
+    .sidebar-header, .settings-header {
+      padding: 15px;
+      background: var(--sidebar-header);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--sidebar-border);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    .sidebar-title, .settings-title {
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .sidebar-close, .settings-close {
+      cursor: pointer;
+      font-size: 20px;
+    }
+
+    .sidebar-content, .settings-content {
+      padding: 15px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .news-item {
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--sidebar-border);
+      padding-bottom: 15px;
+    }
+
+    .news-item:last-child {
+      border-bottom: none;
+    }
+
+    .news-title {
+      font-weight: bold;
+      margin-bottom: 5px;
+      font-size: 16px;
+    }
+
+    .news-date {
+      font-size: 12px;
+      color: #aaa;
+      margin-bottom: 8px;
+    }
+
+    .news-content {
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .settings-section {
+      margin-bottom: 25px;
+    }
+
+    .settings-section-title {
+      font-weight: bold;
+      margin-bottom: 15px;
+      font-size: 16px;
+      border-bottom: 1px solid var(--sidebar-border);
+      padding-bottom: 5px;
+    }
+
+    .color-options {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .color-option {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s;
+      position: relative;
+    }
+
+    .color-option:hover {
+      transform: scale(1.05);
+    }
+
+    .color-option.selected {
+      box-shadow: 0 0 0 3px #fff;
+    }
+
+    .color-option .check-icon {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 18px;
+      opacity: 0;
+    }
+
+    .color-option.selected .check-icon {
+      opacity: 1;
+    }
+
+    .main-content {
+      flex: 1;
+      width: 100%;
+      margin-left: var(--sidebar-width);
+      transition: margin-left 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .main-content.sidebar-closed {
+      margin-left: 0;
+    }
+
+    .sidebar-toggle {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      z-index: 5;
+      background: var(--toggle-bg);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    .settings-toggle {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      z-index: 5;
+      background: var(--toggle-bg);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    .player {
+      background: var(--player-bg);
+      width: 100%;
+      max-width: 100%;
+      display: flex;
+      flex-direction: column;
+      color: white;
+      position: relative;
+      height: 100vh;
+    }
+
+    .player-header {
+      background: var(--player-header-bg);
+      padding: 15px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+      display: none;
+      flex-direction: column;
+      border-bottom: 1px solid #444;
+      position: relative;
+    }
+
+    .player-tagline {
+      font-size: 12px;
+      font-weight: normal;
+      color: #ccc;
+      margin-top: 5px;
+    }
+
+    .player-title {
+      flex: 1;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+      margin-left: 40px; /* Space for sidebar toggle */
+    }
+
+    .playlist-info {
+      font-size: 14px;
+      color: #ccc;
+      margin-top: 5px;
+    }
+
+    .url-input-container {
+      display: none;
+      padding: 10px;
+      background: #333;
+    }
+
+    .url-input {
+	 display: none;
+      flex: 1;
+      padding: 8px 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 4px 0 0 4px;
+      background: #444;
+      color: white;
+    }
+
+    .url-button {
+	 display: none;
+      padding: 8px 15px;
+      background: var(--primary-color);
+      border: none;
+      color: white;
+      font-weight: bold;
+      border-radius: 0 4px 4px 0;
+      cursor: pointer;
+    }
+
+    .player-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: height 0.3s ease;
+    }
+
+    .track-list {
+      flex: 1;
+      overflow-y: auto;
+      background: var(--track-list-bg);
+    }
+
+    .track {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      border-bottom: 1px solid var(--track-border);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .track:hover {
+      background: #333;
+    }
+
+    .track.active {
+      background: #444;
+    }
+
+    .track img {
+      width: 60px;
+      height: 60px;
+      margin-right: 15px;
+      border-radius: 4px;
+      object-fit: cover;
+    }
+
+    .track-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+    }
+
+    .track-title-container {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .track-title {
+      font-size: 16px;
+      font-weight: bold;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .track-artist {
+      font-size: 13px;
+      color: var(--artist-color);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .track-time {
+      font-size: 13px;
+      margin-left: 10px;
+      color: var(--time-color);
+      white-space: nowrap;
+    }
+
+    .heart {
+      margin-left: 10px;
+      cursor: pointer;
+      color: var(--heart-color);
+      font-size: 18px;
+      min-width: 20px;
+      text-align: center;
+    }
+
+    .controls-wrapper {
+      background: var(--controls-bg);
+      position: sticky;
+      bottom: 0;
+      z-index: 5;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+      transition: transform 0.3s ease;
+    }
+
+    .controls-toggle {
+      height: 20px;
+      background: var(--controls-bg);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      border-top: 1px solid #444;
+    }
+
+    .controls-toggle-icon {
+      font-size: 14px;
+      color: var(--primary-color);
+      transition: transform 0.3s;
+    }
+
+    .controls-wrapper.collapsed .controls-toggle-icon {
+      transform: rotate(180deg);
+    }
+
+    .controls {
+      background: var(--controls-bg);
+      padding: 15px;
+      transition: max-height 0.3s ease, opacity 0.3s ease;
+      max-height: 300px;
+      overflow: hidden;
+      opacity: 1;
+    }
+
+    .controls-wrapper.collapsed .controls {
+      max-height: 0;
+      padding: 0 15px;
+      opacity: 0;
+    }
+
+    .controls-mini {
+      display: flex;
+      align-items: center;
+      padding: 10px 15px;
+      background: var(--controls-bg);
+      height: 60px;
+      opacity: 0;
+      max-height: 0;
+      overflow: hidden;
+      transition: opacity 0.3s ease, max-height 0.3s ease;
+    }
+
+    .controls-wrapper.collapsed .controls-mini {
+      opacity: 1;
+      max-height: 60px;
+    }
+
+    .mini-thumbnail {
+      width: 40px;
+      height: 40px;
+      border-radius: 4px;
+      margin-right: 10px;
+      object-fit: cover;
+    }
+
+    .mini-info {
+      flex: 1;
+      min-width: 0;
+      margin-right: 10px;
+      display: flex;
+      align-items: center;
+    }
+
+    .mini-title-container {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .mini-title {
+      font-size: 14px;
+      font-weight: bold;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mini-artist {
+      font-size: 12px;
+      color: #ccc;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mini-controls {
+      display: flex;
+      gap: 10px;
+    }
+
+    .mini-controls button {
+      background: var(--button-bg);
+      border: none;
+      color: white;
+      font-size: 14px;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .now-playing {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .now-playing img {
+      width: 50px;
+      height: 50px;
+      margin-right: 10px;
+      border-radius: 4px;
+      object-fit: cover;
+    }
+
+    .now-playing-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+    }
+
+    .now-playing-title-container {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .now-playing-title {
+      font-weight: bold;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .now-playing-artist {
+      font-size: 12px;
+      color: #ccc;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .btns {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+
+    .btns button {
+      background: var(--button-bg);
+      border: none;
+      color: white;
+      font-size: 18px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btns button:hover {
+      background: var(--button-hover);
+    }
+
+    .progress {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .slider {
+      flex: 1;
+      margin: 0 10px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--slider-color);
+      cursor: pointer;
+    }
+
+    .time {
+      font-size: 12px;
+      background: var(--time-bg);
+      padding: 3px 8px;
+      border-radius: 4px;
+      color: var(--time-color);
+      min-width: 45px;
+      text-align: center;
+    }
+
+    .volume-control {
+      display: flex;
+      align-items: center;
+    }
+
+    .volume-icon {
+      margin-right: 10px;
+      font-size: 16px;
+    }
+
+    .volume-slider {
+      flex: 1;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 30px;
+      color: #aaa;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+      margin-bottom: 10px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .error-message {
+      color: #ff6b6b;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .fetch-titles-button {
+      background: var(--primary-color);
+      border: none;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      margin: 10px auto;
+      display: block;
+    }
+
+    /* Music bar animation */
+    .music-bars {
+      display: none;
+	  color: white;
+      margin-left: 10px;
+      height: 16px;
+      width: 18px;
+      position: relative;
+    }
+
+    .track.active .music-bars,
+    .is-playing .music-bars {
+      display: flex;
+    }
+
+    .bar {
+      background: var(--primary-color);
+      bottom: 0;
+      position: absolute;
+      width: 3px;
+      animation-name: sound;
+      animation-timing-function: linear;
+      animation-iteration-count: infinite;
+      animation-direction: alternate;
+      border-radius: 2px;
+    }
+
+    .bar:nth-child(1) {
+      left: 0;
+      animation-duration: 0.7s;
+      height: 10px;
+    }
+
+    .bar:nth-child(2) {
+      left: 5px;
+      animation-duration: 0.9s;
+      height: 13px;
+    }
+
+    .bar:nth-child(3) {
+      left: 10px;
+      animation-duration: 0.5s;
+      height: 8px;
+    }
+
+    .bar:nth-child(4) {
+      left: 15px;
+      animation-duration: 0.8s;
+      height: 14px;
+    }
+
+    @keyframes sound {
+      0% {
+        transform: scaleY(0.3);
+      }
+      100% {
+        transform: scaleY(1);
+      }
+    }
+
+    @media (max-width: 768px) {
+      :root {
+        --sidebar-width: var(--sidebar-width-mobile);
+      }
+      
+      .sidebar, .settings-sidebar {
+        width: var(--sidebar-width-mobile);
+      }
+      
+      .main-content {
+        margin-left: var(--sidebar-width-mobile);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .sidebar, .settings-sidebar {
+        width: 100%;
+      }
+      
+      .main-content {
+        margin-left: 0;
+        z-index: 1;
+        transition: transform 0.3s ease;
+      }
+      
+      .main-content.sidebar-pushed {
+        transform: translateX(100%);
+      }
+      
+      .main-content.settings-pushed {
+        transform: translateX(-100%);
+      }
+      
+      .track img {
+        width: 40px;
+        height: 40px;
+        margin-right: 10px;
+      }
+
+      .track-title {
+        font-size: 14px;
+      }
+
+      .track-artist {
+        font-size: 12px;
+      }
+
+      .heart {
+        font-size: 16px;
+      }
+
+      .btns button {
+        width: 36px;
+        height: 36px;
+      }
+
+      .controls {
+        padding: 10px;
+      }
+
+      .now-playing img {
+        width: 40px;
+        height: 40px;
+      }
+
+      .player-title {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  <!-- News Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">News & Updates</div>
+      <div class="sidebar-close"><i class="fas fa-times"></i></div>
+    </div>
+    <div class="sidebar-content">
+      <div class="news-item">
+        <div class="news-title">New Music Releases This Week</div>
+        <div class="news-date">May 15, 2024</div>
+        <div class="news-content">
+          Check out the latest albums and singles released this week, featuring new music from top artists across all genres.
+        </div>
+      </div>
+      <div class="news-item">
+        <div class="news-title">Upcoming Virtual Concerts</div>
+        <div class="news-date">May 14, 2024</div>
+        <div class="news-content">
+          Don't miss these upcoming virtual concerts streaming live this month. Get your virtual tickets now!
+        </div>
+      </div>
+      <div class="news-item">
+        <div class="news-title">Music Industry News</div>
+        <div class="news-date">May 12, 2024</div>
+        <div class="news-content">
+          Stay updated with the latest trends, acquisitions, and changes in the music industry that are shaping how we listen to music.
+        </div>
+      </div>
+      <div class="news-item">
+        <div class="news-title">Featured Playlist of the Week</div>
+        <div class="news-date">May 10, 2024</div>
+        <div class="news-content">
+          Our curators have selected the best tracks for this week's featured playlist. Perfect for discovering new music!
+        </div>
+      </div>
+      <div class="news-item">
+        <div class="news-title">Artist Spotlight: Rising Stars</div>
+        <div class="news-date">May 8, 2024</div>
+        <div class="news-content">
+          Discover these emerging artists who are making waves in the music scene with their unique sound and style.
+        </div>
+      </div>
+      <div class="news-item">
+        <div class="news-title">Music Technology Updates</div>
+        <div class="news-date">May 5, 2024</div>
+        <div class="news-content">
+          New developments in music streaming platforms are changing how we discover and enjoy our favorite tracks.
+        </div>
+      </div>
+      <div class="news-item">
+        <div class="news-title">Throwback Thursday Playlists</div>
+        <div class="news-date">May 2, 2024</div>
+        <div class="news-content">
+          Revisit the classics with our curated throwback playlists, featuring hits from the 80s, 90s, and 2000s.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Sidebar -->
+  <div class="settings-sidebar closed">
+    <div class="settings-header">
+      <div class="settings-title">Settings</div>
+      <div class="settings-close"><i class="fas fa-times"></i></div>
+    </div>
+    <div class="settings-content">
+      <div class="settings-section">
+        <div class="settings-section-title">Theme Colors</div>
+        <div class="color-options">
+          <div class="color-option theme-purple selected" style="background-color: #5D5CDE;" data-theme="theme-purple">
+            <i class="fas fa-check check-icon"></i>
+          </div>
+          <div class="color-option theme-red" style="background-color: #DB4437;" data-theme="theme-red">
+            <i class="fas fa-check check-icon"></i>
+          </div>
+          <div class="color-option theme-green" style="background-color: #0F9D58;" data-theme="theme-green">
+            <i class="fas fa-check check-icon"></i>
+          </div>
+          <div class="color-option theme-blue" style="background-color: #4285F4;" data-theme="theme-blue">
+            <i class="fas fa-check check-icon"></i>
+          </div>
+          <div class="color-option theme-orange" style="background-color: #F4B400;" data-theme="theme-orange">
+            <i class="fas fa-check check-icon"></i>
+          </div>
+          <div class="color-option theme-pink" style="background-color: #E91E63;" data-theme="theme-pink">
+            <i class="fas fa-check check-icon"></i>
+          </div>
+        </div>
+      </div>
+      
+      <div class="settings-section">
+        <div class="settings-section-title">Display Mode</div>
+        <div class="toggle-option" style="display: flex; align-items: center; margin-bottom: 10px;">
+          <label for="dark-mode-toggle" style="margin-right: 10px; cursor: pointer;">Dark Mode</label>
+          <div class="toggle-switch" style="position: relative; width: 50px; height: 24px; border-radius: 12px; background-color: #ccc; cursor: pointer;">
+            <div class="toggle-slider" style="position: absolute; width: 20px; height: 20px; border-radius: 50%; background-color: white; top: 2px; left: 2px; transition: transform 0.3s;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <button class="sidebar-toggle" title="Toggle Sidebar"><i class="fas fa-bars"></i></button>
+    <button class="settings-toggle" title="Open Settings"><i class="fas fa-cog"></i></button>
+    
+    <div class="player">
+      <div class="player-header">
+        <div class="player-title">YouTube Playlist Player</div>
+        <small class="player-tagline">Play audio from youtube videos playlist suitable for music playlists and podcasts. Save your internet bandwidth</small>
+      </div>
+
+      <div class="url-input-container">
+        <input type="text" class="url-input" placeholder="Enter YouTube playlist URL" 
+              value="">
+        <button class="url-button">Load</button>
+      </div>
+
+      <div class="player-content">
+        <div class="track-list">
+          <div class="loading">
+            <div class="loading-spinner"></div>
+            <div>Loading playlist...</div>
+          </div>
+          <div class="error-message hidden">Failed to load playlist. Please check the URL and try again.</div>
+        </div>
+      </div>
+
+      <div class="controls-wrapper">
+        <div class="controls-mini">
+          <img src="https://i.ytimg.com/vi/xX0ddK2ageY/hqdefault.jpg" alt="Default Thumbnail" class="mini-thumbnail" id="mini-thumbnail">
+          <div class="mini-info">
+            <div class="mini-title-container">
+              <div class="mini-title" id="mini-title">Tambal Band - Hip Rock Reborn Full Album</div>
+              <div class="mini-artist" id="mini-artist">Select a track to play</div>
+            </div>
+            <div class="music-bars">
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+              <div class="bar"></div>
+            </div>
+          </div>
+          <div class="mini-controls">
+            <button title="Previous" id="mini-prev-button"><i class="fas fa-step-backward"></i></button>
+            <button title="Play" id="mini-play-button"><i class="fas fa-play"></i></button>
+            <button title="Next" id="mini-next-button"><i class="fas fa-step-forward"></i></button>
+          </div>
+        </div>
+        
+        <div class="controls-toggle">
+          <span class="controls-toggle-icon"><i class="fas fa-chevron-down"></i></span>
+        </div>
+        
+        <div class="controls">
+          <div class="now-playing">
+            <img src="https://i.imgur.com/XqaZ6nR.png" alt="Default Thumbnail" id="current-thumbnail">
+            <div class="now-playing-info">
+              <div class="now-playing-title-container">
+                <div class="now-playing-title">Not playing</div>
+                <div class="now-playing-artist">Select a track to play</div>
+              </div>
+              <div class="music-bars">
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="btns">
+            <button title="Previous" id="prev-button"><i class="fas fa-step-backward"></i></button>
+            <button title="Play" id="play-button"><i class="fas fa-play"></i></button>
+            <button title="Next" id="next-button"><i class="fas fa-step-forward"></i></button>
+          </div>
+          
+          <div class="progress">
+            <div class="time current-time">00:00</div>
+            <div class="slider"><input type="range" min="0" max="100" value="0" id="progress-slider"></div>
+            <div class="time total-time">00:00</div>
+          </div>
+          
+          <div class="volume-control">
+            <div class="volume-icon"><i class="fas fa-volume-up"></i></div>
+            <div class="volume-slider">
+              <input type="range" min="0" max="100" value="100" id="volume-slider">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Check for dark mode preference
+if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+  document.documentElement.classList.add('dark');
+}
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+  if (event.matches) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+});
+
+// Set default states for mobile and tablet
+function setResponsiveDefaults() {
+  if (window.innerWidth <= 768) {
+    // Close sidebar on mobile/tablet by default
+    sidebar.classList.add('closed');
+    mainContent.classList.add('sidebar-closed');
+    
+    // Collapse player controls on mobile/tablet by default
+    controlsWrapper.classList.add('collapsed');
+    controlsToggleIcon.className = 'fas fa-chevron-up';
+  }
+}
+
+// Apply default theme
+document.documentElement.classList.add('theme-purple');
+
+// YouTube API loading
+let tag = document.createElement('script');
+tag.src = "https://www.youtube.com/iframe_api";
+let firstScriptTag = document.getElementsByTagName('script')[0];
+firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+// Global variables
+let player;
+let playlist = null;
+let playlistData = [];
+let currentIndex = 0;
+let isPlaying = false;
+let progressInterval;
+let metadataPlayer = null;
+let currentFetchingIndex = -1;
+let initialMetadataFetched = false;
+let metadataFetchQueue = [];
+
+// DOM elements
+const urlInput = document.querySelector('.url-input');
+const urlButton = document.querySelector('.url-button');
+const trackList = document.querySelector('.track-list');
+const loadingIndicator = document.querySelector('.loading');
+const errorMessage = document.querySelector('.error-message');
+const playButton = document.getElementById('play-button');
+const prevButton = document.getElementById('prev-button');
+const nextButton = document.getElementById('next-button');
+const miniPlayButton = document.getElementById('mini-play-button');
+const miniPrevButton = document.getElementById('mini-prev-button');
+const miniNextButton = document.getElementById('mini-next-button');
+const progressSlider = document.getElementById('progress-slider');
+const volumeSlider = document.getElementById('volume-slider');
+const currentTimeElement = document.querySelector('.current-time');
+const totalTimeElement = document.querySelector('.total-time');
+const currentThumbnail = document.getElementById('current-thumbnail');
+const miniThumbnail = document.getElementById('mini-thumbnail');
+const nowPlayingTitle = document.querySelector('.now-playing-title');
+const nowPlayingArtist = document.querySelector('.now-playing-artist');
+const miniTitle = document.getElementById('mini-title');
+const miniArtist = document.getElementById('mini-artist');
+const sidebarToggle = document.querySelector('.sidebar-toggle');
+const sidebar = document.querySelector('.sidebar');
+const sidebarClose = document.querySelector('.sidebar-close');
+const settingsToggle = document.querySelector('.settings-toggle');
+const settingsSidebar = document.querySelector('.settings-sidebar');
+const settingsClose = document.querySelector('.settings-close');
+const mainContent = document.querySelector('.main-content');
+const controlsWrapper = document.querySelector('.controls-wrapper');
+const controlsToggle = document.querySelector('.controls-toggle');
+const controlsToggleIcon = document.querySelector('.controls-toggle-icon i');
+const colorOptions = document.querySelectorAll('.color-option');
+const toggleSwitch = document.querySelector('.toggle-switch');
+const toggleSlider = document.querySelector('.toggle-slider');
+
+// Call this function to set responsive defaults on page load
+document.addEventListener('DOMContentLoaded', setResponsiveDefaults);
+
+// Theme settings
+colorOptions.forEach(option => {
+  option.addEventListener('click', () => {
+    // Remove selected class from all options
+    colorOptions.forEach(opt => opt.classList.remove('selected'));
+    
+    // Add selected class to clicked option
+    option.classList.add('selected');
+    
+    // Apply theme
+    const theme = option.getAttribute('data-theme');
+    
+    // Remove all theme classes
+    document.documentElement.classList.remove('theme-purple', 'theme-red', 'theme-green', 'theme-blue', 'theme-orange', 'theme-pink');
+    
+    // Add selected theme
+    document.documentElement.classList.add(theme);
+  });
+});
+
+// Dark mode toggle
+toggleSwitch.addEventListener('click', () => {
+  document.documentElement.classList.toggle('dark');
+  updateDarkModeToggle();
+});
+
+function updateDarkModeToggle() {
+  if (document.documentElement.classList.contains('dark')) {
+    toggleSlider.style.transform = 'translateX(26px)';
+    toggleSwitch.style.backgroundColor = '#5D5CDE';
+  } else {
+    toggleSlider.style.transform = 'translateX(0)';
+    toggleSwitch.style.backgroundColor = '#ccc';
+  }
+}
+
+// Initialize dark mode toggle state
+updateDarkModeToggle();
+
+// Toggle player controls
+controlsToggle.addEventListener('click', toggleControls);
+
+function toggleControls() {
+  controlsWrapper.classList.toggle('collapsed');
+  const isCollapsed = controlsWrapper.classList.contains('collapsed');
+  
+  // Change icon based on collapsed state
+  if (isCollapsed) {
+    controlsToggleIcon.className = 'fas fa-chevron-up';
+  } else {
+    controlsToggleIcon.className = 'fas fa-chevron-down';
+  }
+}
+
+// Sidebar toggles
+sidebarToggle.addEventListener('click', toggleSidebar);
+sidebarClose.addEventListener('click', toggleSidebar);
+settingsToggle.addEventListener('click', toggleSettings);
+settingsClose.addEventListener('click', toggleSettings);
+
+function toggleSidebar() {
+  const isClosed = sidebar.classList.toggle('closed');
+  
+  if (window.innerWidth <= 600) {
+    mainContent.classList.toggle('sidebar-pushed', !isClosed);
+    
+    // Close settings sidebar if opening news sidebar on mobile
+    if (!isClosed) {
+      settingsSidebar.classList.add('closed');
+      mainContent.classList.remove('settings-pushed');
+    }
+  } else {
+    mainContent.classList.toggle('sidebar-closed', isClosed);
+  }
+}
+
+function toggleSettings() {
+  const isClosed = settingsSidebar.classList.toggle('closed');
+  
+  if (window.innerWidth <= 600) {
+    mainContent.classList.toggle('settings-pushed', !isClosed);
+    
+    // Close news sidebar if opening settings sidebar on mobile
+    if (!isClosed) {
+      sidebar.classList.add('closed');
+      mainContent.classList.remove('sidebar-pushed');
+    }
+  }
+}
+
+// Initialize YouTube player
+function onYouTubeIframeAPIReady() {
+  player = new YT.Player('hidden-player', {
+    height: '0',
+    width: '0',
+    playerVars: {
+      'playsinline': 1,
+      'controls': 0,
+      'disablekb': 1
+    },
+    events: {
+      'onReady': onPlayerReady,
+      'onStateChange': onPlayerStateChange,
+      'onError': onPlayerError
+    }
+  });
+  
+  // Initialize metadata player for fetching titles
+  metadataPlayer = new YT.Player('metadata-player', {
+    height: '0',
+    width: '0',
+    playerVars: {
+      'playsinline': 1,
+      'controls': 0,
+      'disablekb': 1
+    },
+    events: {
+      'onReady': onMetadataPlayerReady,
+      'onStateChange': onMetadataPlayerStateChange
+    }
+  });
+}
+
+// Handle metadata player ready
+function onMetadataPlayerReady(event) {
+  console.log('Metadata player ready');
+}
+
+// Handle metadata player state changes
+function onMetadataPlayerStateChange(event) {
+  if (event.data === YT.PlayerState.PLAYING) {
+    // Immediately pause - we just want the metadata
+    metadataPlayer.pauseVideo();
+    
+    if (currentFetchingIndex >= 0 && currentFetchingIndex < playlistData.length) {
+      // Get video data and update our playlist
+      const videoData = metadataPlayer.getVideoData();
+      if (videoData && videoData.title) {
+        playlistData[currentFetchingIndex].title = videoData.title;
+        playlistData[currentFetchingIndex].channel = videoData.author || "Unknown Artist";
+        
+        // Update in DOM
+        const trackElement = document.querySelector(`.track[data-index="${currentFetchingIndex}"]`);
+        if (trackElement) {
+          const titleElement = trackElement.querySelector('.track-title');
+          const artistElement = trackElement.querySelector('.track-artist');
+          if (titleElement) titleElement.textContent = videoData.title;
+          if (artistElement) artistElement.textContent = videoData.author || "Unknown Artist";
+        }
+        
+        // If this is the currently selected track, update the now playing display
+        if (currentIndex === currentFetchingIndex) {
+          updateDisplayInfo(playlistData[currentFetchingIndex]);
+        }
+      }
+      
+      // Continue with the next video
+      processNextMetadataFetch();
+    }
+  }
+}
+
+// Process the next item in the metadata fetch queue
+function processNextMetadataFetch() {
+  if (metadataFetchQueue.length > 0) {
+    // Get the next index from queue
+    currentFetchingIndex = metadataFetchQueue.shift();
+    
+    // Fetch metadata for this index
+    try {
+      const videoId = playlistData[currentFetchingIndex].id;
+      setTimeout(() => {
+        metadataPlayer.loadVideoById(videoId);
+      }, 100); // Add a small delay to prevent rate limiting
+    } catch (error) {
+      console.error('Error loading metadata for video:', error);
+      processNextMetadataFetch(); // Move to the next one
+    }
+  } else {
+    // Done fetching all metadata
+    currentFetchingIndex = -1;
+    initialMetadataFetched = true;
+  }
+}
+
+// Improved metadata fetching function
+function fetchPlaylistMetadata(priorityIndex = -1) {
+  if (playlistData.length === 0 || !metadataPlayer) return;
+  
+  // Clear existing queue
+  metadataFetchQueue = [];
+  
+  // If a priority index is specified, add it first
+  if (priorityIndex >= 0 && priorityIndex < playlistData.length) {
+    metadataFetchQueue.push(priorityIndex);
+  }
+  
+  // Add all other indices to the queue
+  for (let i = 0; i < playlistData.length; i++) {
+    if (i !== priorityIndex) {
+      metadataFetchQueue.push(i);
+    }
+  }
+  
+  // Start the fetching process
+  if (currentFetchingIndex === -1 && metadataFetchQueue.length > 0) {
+    processNextMetadataFetch();
+  }
+}
+
+// When player is ready
+function onPlayerReady(event) {
+  console.log('Player ready');
+  
+  // Set a default playlist URL example
+  if (!urlInput.value) {
+    urlInput.value = "https://www.youtube.com/watch?v=wvMFFVOnyz4&list=PLeifmpADHqsvsFmq9ZLsoLahDVV0GD_l9&pp=gAQB"; // Example: YouTube Mix
+  }
+  
+  // Load default playlist from URL
+  urlButton.click();
+}
+
+// Update all display info with track data
+function updateDisplayInfo(track) {
+  if (!track) return;
+  
+  // Update main player display
+  if (track.thumbnail) currentThumbnail.src = track.thumbnail;
+  nowPlayingTitle.textContent = track.title || 'Unknown Title';
+  nowPlayingArtist.textContent = track.channel || 'Unknown Artist';
+  
+  // Update mini player display
+  if (track.thumbnail) miniThumbnail.src = track.thumbnail;
+  miniTitle.textContent = track.title || 'Unknown Title';
+  miniArtist.textContent = track.channel || 'Unknown Artist';
+}
+
+// Handle player state changes
+function onPlayerStateChange(event) {
+  if (event.data === YT.PlayerState.PLAYING) {
+    isPlaying = true;
+    updatePlayButtonState(true);
+    startProgressUpdate();
+    highlightCurrentTrack();
+    
+    // Show music bars for both main and mini player
+    const nowPlayingInfo = document.querySelector('.now-playing-info');
+    const miniInfo = document.querySelector('.mini-info');
+    nowPlayingInfo.classList.add('is-playing');
+    miniInfo.classList.add('is-playing');
+    
+    // Update track info from YouTube data
+    updateTrackInfoFromVideo();
+  } else if (event.data === YT.PlayerState.PAUSED) {
+    isPlaying = false;
+    updatePlayButtonState(false);
+    stopProgressUpdate();
+    
+    // Hide music bars
+    const nowPlayingInfo = document.querySelector('.now-playing-info');
+    const miniInfo = document.querySelector('.mini-info');
+    nowPlayingInfo.classList.remove('is-playing');
+    miniInfo.classList.remove('is-playing');
+  } else if (event.data === YT.PlayerState.ENDED) {
+    playNext(); // Auto-play next track
+  }
+}
+
+// Update play/pause button states in both controls
+function updatePlayButtonState(isPlaying) {
+  if (isPlaying) {
+    playButton.innerHTML = '<i class="fas fa-pause"></i>';
+    playButton.title = 'Pause';
+    miniPlayButton.innerHTML = '<i class="fas fa-pause"></i>';
+    miniPlayButton.title = 'Pause';
+  } else {
+    playButton.innerHTML = '<i class="fas fa-play"></i>';
+    playButton.title = 'Play';
+    miniPlayButton.innerHTML = '<i class="fas fa-play"></i>';
+    miniPlayButton.title = 'Play';
+  }
+}
+
+// Update track information from actual video data
+function updateTrackInfoFromVideo() {
+  if (player && player.getVideoData) {
+    const videoData = player.getVideoData();
+    if (videoData && videoData.title) {
+      // Update all displays
+      const trackInfo = {
+        title: videoData.title,
+        channel: videoData.author || "Unknown Artist",
+        thumbnail: currentThumbnail.src // Keep existing thumbnail
+      };
+      
+      updateDisplayInfo(trackInfo);
+      
+      // Also update the data in our playlist
+      if (playlistData[currentIndex]) {
+        playlistData[currentIndex].title = videoData.title;
+        playlistData[currentIndex].channel = videoData.author || "Unknown Artist";
+        
+        // Update the display in the track list if it exists
+        const trackElement = document.querySelector(`.track[data-index="${currentIndex}"]`);
+        if (trackElement) {
+          const titleElement = trackElement.querySelector('.track-title');
+          const artistElement = trackElement.querySelector('.track-artist');
+          if (titleElement) titleElement.textContent = videoData.title;
+          if (artistElement) artistElement.textContent = videoData.author || "Unknown Artist";
+        }
+      }
+    }
+  }
+}
+
+// Handle player errors
+function onPlayerError(event) {
+  console.error('Player error:', event.data);
+  // If a video is unavailable, try to play the next one
+  if (event.data === 2 || event.data === 5 || event.data === 100 || event.data === 101 || event.data === 150) {
+    // Wait a moment and then try to play the next track
+    setTimeout(() => {
+      playNext();
+    }, 1000);
+  }
+}
+
+// Start updating progress bar
+function startProgressUpdate() {
+  stopProgressUpdate();
+  progressInterval = setInterval(updateProgress, 1000);
+}
+
+// Stop updating progress bar
+function stopProgressUpdate() {
+  if (progressInterval) {
+    clearInterval(progressInterval);
+  }
+}
+
+// Update progress bar and time displays
+function updateProgress() {
+  if (player && player.getCurrentTime && player.getDuration) {
+    const currentTime = player.getCurrentTime();
+    const duration = player.getDuration();
+    
+    if (currentTime && duration) {
+      const percentage = (currentTime / duration) * 100;
+      progressSlider.value = percentage;
+      
+      currentTimeElement.textContent = formatTime(currentTime);
+      totalTimeElement.textContent = formatTime(duration);
+    }
+  }
+}
+
+// Format seconds to MM:SS
+function formatTime(seconds) {
+  seconds = Math.floor(seconds);
+  const minutes = Math.floor(seconds / 60);
+  seconds = seconds % 60;
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+// Extract playlist ID from URL
+function extractPlaylistId(url) {
+  const regex = /[?&]list=([^&]+)/;
+  const match = url.match(regex);
+  return match ? match[1] : null;
+}
+
+// Extract video ID from URL
+function extractVideoId(url) {
+  const regex = /[?&]v=([^&]+)/;
+  const match = url.match(regex);
+  return match ? match[1] : null;
+}
+
+// Parse YouTube playlist data
+async function fetchPlaylistData(playlistId) {
+  try {
+    // Since we can't directly call the YouTube API from the client side without API keys,
+    // we need to use the YouTube IFrame Player API to extract playlist items
+    
+    // First, get the initial video ID from the URL
+    const url = urlInput.value;
+    const videoId = extractVideoId(url) || '';
+
+    // If there's an existing playlist player, clean it up
+    if (playlist) {
+      try {
+        playlist.destroy();
+      } catch (e) {
+        console.error('Error destroying playlist:', e);
+      }
+      playlist = null;
+    }
+
+    // Create a temporary player to access the playlist
+    return new Promise((resolve, reject) => {
+      // Add playlist holder if needed
+      let playlistDataEl = document.getElementById('playlist-data');
+      if (!playlistDataEl) {
+        playlistDataEl = document.createElement('div');
+        playlistDataEl.id = 'playlist-data';
+        playlistDataEl.style.display = 'none';
+        document.body.appendChild(playlistDataEl);
+      }
+      
+      playlist = new YT.Player('playlist-data', {
+        height: '0',
+        width: '0',
+        playerVars: {
+          'playsinline': 1,
+          'controls': 0,
+          'listType': 'playlist',
+          'list': playlistId
+        },
+        events: {
+          'onReady': () => {
+            try {
+              // Get playlist data using the player API
+              const playerPlaylist = playlist.getPlaylist();
+              
+              if (!playerPlaylist || playerPlaylist.length === 0) {
+                reject(new Error('Could not load playlist videos'));
+                return;
+              }
+              
+              // Create data structure for each video in the playlist
+              const playlistItems = playerPlaylist.map((videoId, index) => {
+                return {
+                  id: videoId,
+                  title: `Track ${index + 1}`, // Will be updated with real title
+                  channel: "Loading...", // Will be updated with real channel
+                  thumbnail: `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
+                  duration: 0 // Will be updated when played
+                };
+              });
+              
+              resolve(playlistItems);
+              
+              // Clean up the playlist player after we've extracted the data
+              setTimeout(() => {
+                if (playlist) {
+                  try {
+                    playlist.destroy();
+                  } catch (e) {
+                    console.error('Error cleaning up playlist:', e);
+                  }
+                  playlist = null;
+                }
+              }, 1000);
+            } catch (error) {
+              console.error('Error extracting playlist data:', error);
+              reject(error);
+            }
+          },
+          'onError': (e) => {
+            console.error('Playlist player error:', e);
+            reject(new Error('Error loading playlist'));
+          }
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Error fetching playlist:', error);
+    throw error;
+  }
+}
+
+// Load playlist from URL
+async function loadPlaylist() {
+  const url = urlInput.value.trim();
+  
+  if (!url) {
+    showError('Please enter a YouTube playlist URL');
+    return;
+  }
+  
+  const playlistId = extractPlaylistId(url);
+  
+  if (!playlistId) {
+    showError('Invalid YouTube playlist URL');
+    return;
+  }
+  
+  showLoading();
+  
+  try {
+    // Cleanup existing data
+    playlistData = [];
+    currentIndex = 0;
+    stopProgressUpdate();
+    updatePlayButtonState(false);
+    initialMetadataFetched = false;
+    
+    // Fetch new playlist
+    playlistData = await fetchPlaylistData(playlistId);
+    renderPlaylist();
+    hideLoading();
+    hideError();
+    
+    // Set first track as current and update display
+    if (playlistData.length > 0) {
+      currentIndex = 0;
+      updateDisplayInfo(playlistData[currentIndex]);
+      highlightCurrentTrack();
+      
+      // Preload the first track but don't play it
+      player.cueVideoById(playlistData[currentIndex].id);
+    }
+    
+    // Start fetching metadata for all videos with priority for first track
+    fetchPlaylistMetadata(0);
+  } catch (error) {
+    hideLoading();
+    showError('Failed to load playlist. Please check the URL and try again.');
+    console.error(error);
+  }
+}
+
+// Render playlist to UI
+function renderPlaylist() {
+  trackList.innerHTML = '';
+  
+  playlistData.forEach((track, index) => {
+    const trackElement = document.createElement('div');
+    trackElement.className = 'track';
+    trackElement.dataset.index = index;
+    
+    trackElement.innerHTML = `
+      <img src="${track.thumbnail}" alt="${track.title}">
+      <div class="track-info">
+        <div class="track-title-container">
+          <div class="track-title">${track.title}</div>
+          <div class="track-artist">${track.channel}</div>
+        </div>
+        <div class="music-bars">
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+        </div>
+      </div>
+      <div class="track-time">${track.duration ? formatTime(track.duration) : '--:--'}</div>
+      <div class="heart">♡</div>
+    `;
+    
+    trackElement.addEventListener('click', () => {
+      currentIndex = index;
+      playTrack(index);
+    });
+    
+    const heartButton = trackElement.querySelector('.heart');
+    heartButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleHeart(heartButton);
+    });
+    
+    trackList.appendChild(trackElement);
+  });
+}
+
+// Play a track by index
+function playTrack(index) {
+  if (index >= 0 && index < playlistData.length) {
+    const track = playlistData[index];
+    
+    player.loadVideoById(track.id);
+    player.playVideo();
+    
+    // Update all displays
+    updateDisplayInfo(track);
+    
+    highlightCurrentTrack();
+  }
+}
+
+// Play/pause toggle
+function togglePlay() {
+  if (!playlistData.length) return;
+  
+  if (player.getPlayerState() === YT.PlayerState.PLAYING) {
+    player.pauseVideo();
+  } else {
+    if (player.getPlayerState() === YT.PlayerState.CUED || player.getPlayerState() === -1) {
+      playTrack(currentIndex);
+    } else {
+      player.playVideo();
+    }
+  }
+}
+
+// Play next track
+function playNext() {
+  if (!playlistData.length) return;
+  
+  currentIndex = (currentIndex + 1) % playlistData.length;
+  playTrack(currentIndex);
+}
+
+// Play previous track
+function playPrevious() {
+  if (!playlistData.length) return;
+  
+  currentIndex = (currentIndex - 1 + playlistData.length) % playlistData.length;
+  playTrack(currentIndex);
+}
+
+// Toggle heart (favorite)
+function toggleHeart(heartElement) {
+  if (heartElement.textContent === '♡') {
+    heartElement.textContent = '♥';
+  } else {
+    heartElement.textContent = '♡';
+  }
+}
+
+// Highlight current track in playlist
+function highlightCurrentTrack() {
+  const tracks = document.querySelectorAll('.track');
+  tracks.forEach(track => track.classList.remove('active'));
+  
+  const currentTrack = document.querySelector(`.track[data-index="${currentIndex}"]`);
+  if (currentTrack) {
+    currentTrack.classList.add('active');
+    // Scroll to make current track visible
+    currentTrack.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+// Helper functions for UI state
+function showLoading() {
+  loadingIndicator.classList.remove('hidden');
+  errorMessage.classList.add('hidden');
+}
+
+function hideLoading() {
+  loadingIndicator.classList.add('hidden');
+}
+
+function showError(message) {
+  errorMessage.textContent = message;
+  errorMessage.classList.remove('hidden');
+  loadingIndicator.classList.add('hidden');
+}
+
+function hideError() {
+  errorMessage.classList.add('hidden');
+}
+
+// Event Listeners
+urlButton.addEventListener('click', loadPlaylist);
+urlInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    loadPlaylist();
+  }
+});
+
+// Add event listeners to both main and mini controls
+playButton.addEventListener('click', togglePlay);
+prevButton.addEventListener('click', playPrevious);
+nextButton.addEventListener('click', playNext);
+
+miniPlayButton.addEventListener('click', togglePlay);
+miniPrevButton.addEventListener('click', playPrevious);
+miniNextButton.addEventListener('click', playNext);
+
+progressSlider.addEventListener('input', function() {
+  if (player && player.getDuration) {
+    const seekTime = (this.value / 100) * player.getDuration();
+    player.seekTo(seekTime, true);
+  }
+});
+
+volumeSlider.addEventListener('input', function() {
+  if (player) {
+    player.setVolume(this.value);
+  }
+});
+
+// Responsive handling for window resize
+window.addEventListener('resize', () => {
+  if (window.innerWidth <= 600) {
+    // Mobile layout
+    if (!sidebar.classList.contains('closed')) {
+      mainContent.classList.add('sidebar-pushed');
+    } else {
+      mainContent.classList.remove('sidebar-pushed');
+    }
+    
+    if (!settingsSidebar.classList.contains('closed')) {
+      mainContent.classList.add('settings-pushed');
+    } else {
+      mainContent.classList.remove('settings-pushed');
+    }
+    
+    mainContent.classList.remove('sidebar-closed');
+  } else {
+    // Desktop layout
+    mainContent.classList.remove('sidebar-pushed', 'settings-pushed');
+    
+    if (sidebar.classList.contains('closed')) {
+      mainContent.classList.add('sidebar-closed');
+    } else {
+      mainContent.classList.remove('sidebar-closed');
+    }
+  }
+});
+
+// Create hidden divs for YouTube players
+const hiddenPlayerDiv = document.createElement('div');
+hiddenPlayerDiv.id = 'hidden-player';
+hiddenPlayerDiv.style.display = 'none';
+document.body.appendChild(hiddenPlayerDiv);
+
+const metadataPlayerDiv = document.createElement('div');
+metadataPlayerDiv.id = 'metadata-player';
+metadataPlayerDiv.style.display = 'none';
+document.body.appendChild(metadataPlayerDiv);
+</script>
+
+</body>
+</html>
